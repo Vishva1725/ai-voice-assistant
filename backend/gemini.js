@@ -46,15 +46,25 @@ now your userInput- ${command}
 
 
 
-    const result=await axios.post(apiUrl,{
-    "contents": [{
-    "parts":[{"text": prompt}]
-    }]
-    })
-return result.data.candidates[0].content.parts[0].text
-} catch (error) {
-    console.log(error)
-}
-}
+        const result = await axios.post(apiUrl, {
+            contents: [
+                {
+                    parts: [{ text: prompt }],
+                },
+            ],
+        });
 
-export default geminiResponse
+        console.log('Gemini raw response:', result?.data);
+
+        const text = result?.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+
+        // fallback
+        return result?.data ? JSON.stringify(result.data) : null;
+    } catch (error) {
+        console.error('Gemini error:', error?.message || error);
+        return `Error contacting Gemini: ${error?.message || 'unknown'}`;
+    }
+};
+
+export default geminiResponse;

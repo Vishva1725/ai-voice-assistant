@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react'
-import { userDataContext } from '../context/userContext'
+import { userDataContext } from '../context/UserContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import aiImg from "../assets/ai.gif"
@@ -46,11 +46,11 @@ function Home() {
 
   const speak=(text)=>{
     const utterence=new SpeechSynthesisUtterance(text)
-    utterence.lang = 'hi-IN';
-    const voices =window.speechSynthesis.getVoices()
-    const hindiVoice = voices.find(v => v.lang === 'hi-IN');
-    if (hindiVoice) {
-      utterence.voice = hindiVoice;
+    utterence.lang = 'en-US';
+    const voices = window.speechSynthesis.getVoices();
+    const enVoice = voices.find(v => v.lang && v.lang.startsWith('en')) || voices[0];
+    if (enVoice) {
+      utterence.voice = enVoice;
     }
 
 
@@ -100,6 +100,7 @@ useEffect(() => {
   const recognition = new SpeechRecognition();
 
   recognition.continuous = true;
+  // Use English recognition by default
   recognition.lang = 'en-US';
   recognition.interimResults = false;
 
@@ -163,7 +164,9 @@ useEffect(() => {
 
   recognition.onresult = async (e) => {
     const transcript = e.results[e.results.length - 1][0].transcript.trim();
-    if (transcript.toLowerCase().includes(userData.assistantName.toLowerCase())) {
+    console.log('TRANSCRIPT:', transcript, 'assistantName:', userData?.assistantName)
+    // Defensive: ensure assistantName is available before checking
+    if (userData?.assistantName && transcript.toLowerCase().includes(userData.assistantName.toLowerCase())) {
       setAiText("");
       setUserText(transcript);
       recognition.stop();
@@ -177,9 +180,22 @@ useEffect(() => {
   };
 
 
-    const greeting = new SpeechSynthesisUtterance(`Hello ${userData.name}, what can I help you with?`);
-    greeting.lang = 'hi-IN';
-   
+    // mark speaking so recognition doesn't start while greeting plays
+    isSpeakingRef.current = true;
+  const greeting = new SpeechSynthesisUtterance(`Hello ${userData.name}, what can I help you with?`);
+  greeting.lang = 'en-US';
+
+    // when greeting ends, clear speaking flag and start recognition safely
+    greeting.onend = () => {
+      isSpeakingRef.current = false;
+      try {
+        recognition.start();
+        console.log('Recognition started after greeting end');
+      } catch (e) {
+        if (e.name !== 'InvalidStateError') console.error('Start after greeting error:', e);
+      }
+    };
+
     window.speechSynthesis.speak(greeting);
  
 
@@ -196,7 +212,7 @@ useEffect(() => {
 
 
   return (
-    <div className='w-full h-[100vh] bg-gradient-to-t from-[black] to-[#02023d] flex justify-center items-center flex-col gap-[15px]'>
+    <div className='w-full h-[100vh] bg-gradient-to-t from-[black] to-[#02023d] flex justify-center items-center flex-col gap-[15px] overflow-hidden'>
       <CgMenuRight className='lg:hidden text-white absolute top-[20px] right-[20px] w-[25px] h-[25px]' onClick={()=>setHam(true)}/>
       <div className={`absolute lg:hidden top-0 w-full h-full bg-[#00000053] backdrop-blur-lg p-[20px] flex flex-col gap-[20px] items-start ${ham?"translate-x-0":"translate-x-full"} transition-transform`}>
  <RxCross1 className=' text-white absolute top-[20px] right-[20px] w-[25px] h-[25px]' onClick={()=>setHam(false)}/>
